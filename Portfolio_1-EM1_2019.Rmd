@@ -1,0 +1,171 @@
+---
+title: "Portfolio 1 — Experimental Methods 1 2019"
+author: "Nanna Høgsholt"
+date: "10/02/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE, include = TRUE)
+
+pacman::p_load(pastecs, tidyverse, ggplot2)
+```
+
+# Part 1
+
+**Write a short data mining report on the CogSci Intro Week Personality Test Data in which you answer the following questions in prose, code and graphs:**
+
+First of all, you have to import the personality data. If the dataset is in your working directory, then you can just load it into R. Otherwise you will have to change your working directory.
+
+```{r load_data}
+df<-read.csv("NEW_CogSciPersonalityTest2019.csv")
+
+```
+
+Once you are done loading the data, you can start working on the questions below.
+
+## Question 1
+
+**Who can hold their breath longer on average, those with right or left ocular dominance? Plot the data using ggplot2 to find out. The plots should include error bars (depicting the standard error of the means). Then use the mean() and sd() functions to find mean and standard deviation of the two eye dominance groups.**
+
+
+```{r question1}
+
+ocular_dom <- filter(df, df$ocular_dom=='Left' | df$ocular_dom=='Right')
+
+ggplot(ocular_dom, aes(x=ocular_dom, y=breath_hold, fill=ocular_dom)) + geom_bar(stat='summary', fun.y=mean) + geom_errorbar(stat='summary', fun.data=mean_se, width=0.5) + scale_fill_brewer(palette = "Set1") 
+
+
+ocular_dom<- group_by(ocular_dom, ocular_dom)
+
+summarize(ocular_dom, mean(breath_hold), sd(breath_hold))
+
+```
+
+### Explain your results in plain terms here: 
+People with right ocular dominance can on average hold their breath around 4 seconds longer than those with left ocular dominance. Those with right ocular dominance also show a smaller error bar than those with left ocular dominance. The error bars are describing the standard error of the sample and hereby how representative the data is to the population. It can herby be concluded that the sample mean is a better representative of the true population mean for those with right ocular dominance. 
+The standard deviation is describing the data as the whole population. Which means that in this case, those with right ocular dominance has a slightly better representation of the whole population than those with left ocular dominance. 
+
+
+---
+
+## Question 2
+
+**Who likes silence vs. noise best? Males or females? Also in this case you should plot the data using ggplot2 (including error bars), then use the mean() and sd() functions to find mean and standard deviation of the two genders.**
+
+```{r question2}
+
+ggplot(df, aes(x=gender, y=sound_level_pref, fill=gender)) + geom_bar(stat='summary', fun.y=mean) + geom_errorbar(stat='summary', fun.data=mean_se, width=0.5)+ scale_fill_brewer(palette = "Set1") 
+
+df<- group_by(df, gender)
+
+summarize(df, mean(sound_level_pref), sd(sound_level_pref))
+
+```
+
+### Explain your results in plain terms here: 
+The sound level preference seems to be pretty equal between males and females. With males scoring 1,3points higher mean than females. Looking at the bar-plot, males have a bigger standard error than females, which indicates that the preference in sound level varies more in males that in females, but also that the mean of the females have a better fit to the true population.  
+The female’s standard deviation is lower than males which shows a better representation of the population. However, this might be effected by the low number of male participants.
+
+
+---
+
+## Question 3
+
+**Are the breath_hold data normally distributed? Provide visual and numeric support for your answer.**
+
+```{r question3}
+ggplot(df, aes(x=breath_hold)) + geom_histogram(aes(y=..density..),binwidth = 3, fill="white",colour="black" ) + stat_function(fun = dnorm, args = list(mean = mean(df$breath_hold, na.rm = TRUE), sd = sd(df$breath_hold, na.rm = TRUE)), colour= "red", size = 1) +  ggtitle("Breath hold distribution")
+
+
+qplot(sample=df[df$breath_hold<120,]$breath_hold) + xlab("Expected value") + ylab("Observed value") + stat_qq()+stat_qq_line(colour='red')
+
+round(stat.desc(df$breath_hold, basic=FALSE, norm=TRUE), digits = 2)
+
+#Checking for outliers
+df$breath_z<-((df$breath_hold-mean(df$breath_hold))/sd(df$breath_hold))
+
+breath_clean<-filter(df, breath_z<3)
+
+qplot(sample=df[breath_clean$breath_hold<120,]$breath_hold) + xlab("Expected value") + ylab("Observed value") + stat_qq()+stat_qq_line(colour='red') + ggtitle("QQ-plot of breath hold distribution after removing outlies")
+
+```
+
+
+### Explain your results in plain terms here: 
+The density distribution of the data shows a small positive skew of the data distribution. This is also seen in the QQ-plot, where a large amount of outliers are placed more positively on the y-axis than expected for a normal distribution and doesn’t show a linear scatterplot.  
+Looking at the sharpio-wilk test in the statistical test it shows a p-value close to 0.05 (0.04), but below the threshold of what can be allowed for a normal distribution. Calculating for possible outliers, to help the distribution, show no mathematical outliers and the breath_hold data can hereby be determined as not normally distributed. 
+
+
+---
+
+## Question 4
+
+**Are the Balloon reaction time data (balloon and balloon_balance) normally distributed? Provide visual and numeric support for your answer.**
+
+```{r question4}
+#Balloon
+ggplot(df, aes(x=balloon)) + geom_histogram(aes(y=..density..),binwidth = 2, fill="white",colour="black" ) + stat_function(fun = dnorm, args = list(mean = mean(df$balloon, na.rm = TRUE), sd = sd(df$balloon, na.rm = TRUE)), colour= "red", size = 1) +  ggtitle("Balloon histogram") 
+
+qplot(sample=df$balloon) + xlab("Expected value") + ylab("Observed value") + stat_qq()+stat_qq_line(colour='red') +  ggtitle("Balloon qq-plot")
+
+##Cheking for balloon outliers
+df$balloon_z<-((df$balloon-mean(df$balloon))/sd(df$balloon))
+
+balloon_clean<-filter(df, balloon_z<3 | balloon_z>(-3))
+
+round(stat.desc(df$balloon, basic=FALSE, norm=TRUE), digits = 2)
+
+
+#Balloon_balance
+ggplot(df, aes(x=balloon_balance)) + geom_histogram(aes(y=..density..),binwidth = 2, fill="white",colour="black" ) + stat_function(fun = dnorm, args = list(mean = mean(df$balloon_balance, na.rm = TRUE), sd = sd(df$balloon_balance, na.rm = TRUE)), colour= "red", size = 1) +  ggtitle("Balloon balance histogram")
+
+qplot(sample=df[df$balloon_balance<120,]$balloon_balance) + xlab("Expected value") + ylab("Observed value") + stat_qq()+stat_qq_line(colour='red') +  ggtitle("Balloon balance qq-plot")
+
+#Cheking for balloon_balance outliers with
+df$balloonbalance_z<-((df$balloon_balance-mean(df$balloon_balance))/sd(df$balloon_balance))
+
+balloonbalance_clean<-filter(df, balloonbalance_z<3 | balloonbalance_z>(-3))
+
+
+round(stat.desc(df$balloon_balance, basic=FALSE, norm=TRUE), digits = 2)
+
+
+
+
+```
+
+
+### Explain your results in plain terms here: 
+Neither the balloon nor the balloon balance shows a normal distribution in the visual assessing of the data. Both seemed to have a lot of participants that performed in the lower seconds and a few outliers who performed in in the higher end and maybe even reached the constriction of 120 seconds. However, by calculating the z-values for each datapoint it shows that none of the scores are outside of the 3SD limitation and can therefore not be excluded mathematically from the dataset. 
+In the statistical test, both dataset deviates from a comparable normal distribution by proving a p-value on 0, which is also supported in skewness and kurtosis values for the distributions, showing respectively skewness: 3.31 and kurtosis: 2.38 for the balloon data and skewness: 2.02 and kurtosis: -0.25 for the balloon balance.  
+
+---
+
+## Question 5
+
+**Shoe size could tell us something about general body size, which could also be connected to one's ability to hold your breath. In other words we predict that there is a positive relation between shoe size and how long time CogSci students can hold their breath. Try plotting the two sets of data against each other using a scatter plot (hint: both variables are continuous variables).**
+**Bonus question: Males and females have different body sizes. Use grouping in your plot to distinguish the relationship between shoe size and holding breath for males and females.**
+
+```{r question5}
+ggplot(df, aes(x=shoesize, y=breath_hold,)) + geom_point() + geom_smooth(method = "lm", aes( color="linear"))+ scale_color_manual(name="Model" ,values=c(linear="red"))
+```
+
+```{r quoestion 5 Bonus}
+ggplot(df, aes(x=shoesize, y=breath_hold,color=gender )) + geom_point() + geom_smooth(method = "lm") + scale_fill_brewer(palette = "Blues") + scale_color_brewer(palette = "Set1") 
+
+```
+
+
+### Explain your results in plain terms here: 
+The scatterplot shows that there is a positive relation between shoe size and how long time CogSci students can hold their breath. The datapoints them self doesn't show any pattern. However, the linear summarizing has a clear positive slope which means that the bigger the feet, the longer the breath hold. 
+
+#### **Bonus:**
+Grouping the datapoints by gender proves again a positive relation between shoe size and how long time female CogSci students can hold their breath. For male CogSci students the relation seems less positive and more neutral, which is caused by the wide spread of datapoints.
+
+
+
+
+
