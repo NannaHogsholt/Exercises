@@ -1,0 +1,235 @@
+---
+title: "portfolio 4 stuff"
+author: "Manon Grandjean"
+date: "11/22/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse, MuMIn) 
+```
+
+
+
+Analysis 1:
+1. calculate suicide rate.
+2. model age as predictor for suicide rate using aov()
+3. check normality of residuals - plot(model)
+4. transform the rate.
+5. model transformer sui_rate
+
+```{r}
+df <- read.csv("WHO_suicide_statistics.csv")
+df$sui_rate <- df$suicides_no/df$population
+
+# analysis 1
+
+model <- aov(sui_rate ~ age, data = df)
+plot(model)
+
+df$log_sui_rate <- log(df$sui_rate) # problems with zeros 
+df$sqrt_sui_rate <- sqrt(df$sui_rate)
+df$rec_sui_rate <- 1/df$sui_rate # maybe delete this because it is weird to devide by zero
+
+modelsqrt <- aov(sqrt_sui_rate ~ age, data = df)
+plot(model)
+
+```
+
+
+
+```{r}
+# analysis 1 - transformation
+
+model_transformed <- aov(sqrt_sui_rate ~ age, data = df)
+plot(model_transformed)
+plot(model_transformed, 4)
+summary(model_transformed)
+
+# What is the R^2 for age as a predictor?
+# R^2 = SSM/SST
+# SSM = 0.4154
+# SSR = 1.5566
+# SST = SSM + SSR = 1.972
+# R^2 = 0.4154/1.972 = 0.21 roughly ;-)
+
+summary(lm(formula = sqrt_sui_rate ~ age, data = df))
+
+# and true enough, the adjusted R-squared is 0.2105 ! (21%)
+
+
+ggplot(df, aes(x = age, y = sqrt_sui_rate, fill=age))+
+  geom_bar(stat = "summary", fun.y=mean)
+```
+
+```{r}
+
+df$age2 <- as.numeric(df$age)
+
+
+ggplot(df, aes(x = age, y = suicides_no, color = age))+
+  geom_bar(stat = "summary", fun.y=mean, position = "dodge", fill = "#e9e9e9")+
+  ggtitle("Suicide numbers per age")
+
+ggplot(df, aes(x = age2, y = suicides_no, color = age2))+
+  geom_point(stat = "summary", fun.y=mean)+ geom_smooth(method=lm, color="red")+
+  ggtitle("Suicide numbers per age")
+
+ggplot(df, aes(x = age2, y = (sqrt_sui_rate), color = age2))+
+  geom_point(stat = "summary", fun.y=mean)+ geom_smooth(method=lm, color="red")+
+  ggtitle("Suicide numbers per age")
+
+ggplot(df, aes(x = age2, y = sqrt_sui_rate))+
+  geom_point(stat = "summary", fun.y=mean)+ geom_smooth(method=lm, color="#3293e3")+
+  ggtitle("Suicide rate per age")+ xlab("Age groups (1=05-14y, 2=15-24, 3=25-34, 4=35-54, 5=55-74, 6=75+)")
+
+ggplot(df, aes(x = age2, y = (sqrt_sui_rate*100), color = age2))+
+  geom_point()+ geom_smooth(method=lm, color="#3293e3")+
+  ggtitle("Suicide rate per age")+ xlab("Age groups (1=05-14y, 2=15-24, 3=25-34, 4=35-54, 5=55-74, 6=75+)") + ylab("sqrt(Suicide rate)*100")
+
+
+ggplot(df, aes(x = age, y = sui_rate))+
+  geom_point() + geom_smooth(model=lm)+
+  ggtitle("Suicide numbers per year")
+
+```
+
+Boxplot
+```{r}
+ggplot(df, aes(x = age, y = sqrt_sui_rate, color=age)) +
+  geom_boxplot(width = 0.5) +
+  ggtitle("Age in suicide rates")+
+  stat_summary(fun.y = mean, geom = "point", shape = 23, colour = "Black")
+```
+
+
+
+
+
+
+Analysis 2:
+Suicide rates as predicted by year. (suicide rates numeric, year integer - does this meet assumptions, roughly? haha)
+1. model age as predictor for sqrt_sui_rate using aov()
+2. check normality of residuals - plot(model)
+3. summary(lm()) for effect size / R^2
+
+```{r}
+a2model <- aov(sqrt_sui_rate ~ year, data=df)
+plot(a2model) # tells us about residuals, looks way more homoschedastic than that of analysis 1 :-)
+summary(a2model) # significant P-value
+summary(lm(formula = sqrt_sui_rate ~ year, data=df)) # R^" = 0.0039 (meaning this model accounts for about 0.4% af variance)
+```
+
+let's visualize it a sec
+```{r}
+ggplot(df, aes(x = year, y = suicides_no, color = age))+
+  geom_bar(stat = "summary", fun.y=mean, position = "dodge", fill = "#e9e9e9")+
+  ggtitle("Suicide numbers per year")
+
+#This is pretty but not rate, so don't use this
+ggplot(df, aes(x = year, y = suicides_no, color = age))+
+  geom_point(stat = "summary", fun.y=mean)+ geom_smooth(method=lm)+
+  ggtitle("Suicide numbers per year")
+
+ggplot(df, aes(x = year, y = suicides_no))+
+  geom_point(stat = "summary", fun.y=mean) + geom_smooth(method=lm)+
+  ggtitle("Suicide numbers per year")
+
+ggplot(df, aes(x = year, y = sui_rate, color = age))+
+  geom_bar(stat = "summary", fun.y=mean, position = "dodge", fill = "#e9e9e9")+
+  ggtitle("Suicide rates per year")
+
+#This one is good
+ggplot(df, aes(x = year, y = (sqrt_sui_rate*100), color = age))+
+  geom_point(stat = "summary", fun.y=mean)+ geom_smooth(method = "lm")  +
+  ggtitle("Suicide rates per year") + ylab("sqrt(Suicide rate)*100")
+
+ggplot(df, aes(x = year, y = sqrt_sui_rate))+
+  geom_point(stat = "summary", fun.y=mean, position = "dodge", fill = "#e9e9e9")+ geom_smooth(method=lm)+
+  ggtitle("Suicide rates per year")
+
+```
+
+```{r}
+# just exploring
+
+# suicides_no :
+# country accounts for 41.6%
+# year accounts for 0.01%
+# sex accounts for 1.6%
+# age accounts for 2.6%
+# population accounts for 37.3%
+# that is roughly a total of 54.7% of the varience explained by theoretically justifiable variables measured.
+
+
+# sqrt_sui_rate :
+# country accounts for 29.5%
+# year accounts for 0.4%
+# sex accounts for 15.4%
+# age accounts for 21%
+# that is roughly a total of 66.3% of the varience explained by theoretically justifiable variables measured. (rate is already dependent on suicides_no and population, so that would violate the collinearity assumption)
+
+
+# sui_rate :
+# country accounts for 22.4%
+# year accounts for 0.5%
+# sex accounts for 14%
+# age accounts for 14%
+# that is roughly a total of 51% of the varience explained by theoretically justifiable variables measured. (rate is already dependent on suicides_no and population, so that would violate the collinearity assumption)
+
+summary(lm(formula = suicides_no ~ population, data=df))
+
+```
+
+
+
+
+
+Analysis 3:
+lm(sui_rate (or sqrt_sui_rate?) ~ relevant prdictors
+
+```{r}
+# analysis 3
+# model comparison
+
+# We have 4 theoretically justifiable predictors in our maximum model (country, year, sex, age)
+# 1x4. 4x3. 6x2. 4x1. = 15 different models possible.
+
+maximal_model <- lm(formula = sqrt_sui_rate ~ country + year + sex + age, data=df)
+
+n_country_model <- lm(formula = sqrt_sui_rate ~ year + sex + age, data=df)
+n_year_model <- lm(formula = sqrt_sui_rate ~ country + sex + age, data=df)
+n_sex_model <- lm(formula = sqrt_sui_rate ~ country + year + age, data=df)
+n_age_model <- lm(formula = sqrt_sui_rate ~ country + year + sex, data=df)
+
+cy_model <- lm(formula = sqrt_sui_rate ~ country + year, data=df)
+cs_model <- lm(formula = sqrt_sui_rate ~ country + sex, data=df)
+ca_model <- lm(formula = sqrt_sui_rate ~ country + age, data=df)
+ys_model <- lm(formula = sqrt_sui_rate ~ year + sex, data=df)
+ya_model <- lm(formula = sqrt_sui_rate ~ year + age, data=df)
+sa_model <- lm(formula = sqrt_sui_rate ~ sex + age, data=df)
+
+summary(maximal_model) # maximal model, R^2 = 66.28%
+
+summary(n_country_model) # R^2 = 36.86%
+summary(n_year_model) # R^2 = 66.14%
+summary(n_sex_model) # R^2 = 50.81%
+summary(n_age_model) # R^2 = 45.15%
+
+summary(cy_model) # R^2 = 29.69%
+summary(cs_model) # R^2 = 45.01%
+summary(ca_model) # R^2 = 50.67%
+summary(ys_model) # R^2 = 15.81%
+summary(ya_model) # R^2 = 21.45%
+summary(sa_model) # R^2 = 36.47%
+
+```
+
+
+
+```{r}
+ggplot(df, aes(x = sex, y = sui_rate, color = age))+
+  geom_bar(stat = "summary", fun.y=mean, position = "dodge", fill = "#e9e9e9", size = 1.2)
+```
+
