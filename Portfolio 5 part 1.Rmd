@@ -1,0 +1,170 @@
+---
+title: "Portfolio 5"
+author: "Nanna Høgsholt"
+date: "29/11/2019"
+output: html_document
+---
+
+*Portfolio 5 
+```{r}
+library(pacman);p_load(tidyverse,lme4, boot, lmerTest, caret, e1071,ggplot2)
+```
+
+**Analysis 1
+
+```{r}
+#Loading data
+cake<-read.csv("cake.csv", header = T)
+
+```
+
+Boxplotting
+```{r}
+boxplot(angle ~ recipe, col=c("white","lightgrey"),cake)
+boxplot(angle ~ temp, col=c("white","lightgrey"),cake)
+boxplot(angle ~ recipe+temp, col=c("white","lightgrey"),cake)
+boxplot(angle ~ temp+recipe, col=c("white","lightgrey"),cake)
+boxplot(angle ~ replicate, col=c("white","lightgrey"),cake)
+boxplot(angle ~ recipe + temp, cake)
+boxplot(angle ~ replicate + temp, cake)
+
+```
+
+```{r}
+#adding random intercepts
+cake.model=lmerTest::lmer(angle ~ temp+(1|recipe)+(1|replicate), data=cake, REML=F)
+summary(cake.model)
+
+```
+
+variance of angle breage of each recipe 
+
+Intercept model
+```{r}
+m1 <- lmerTest::lmer(angle ~ recipe + (1|replicate),data = cake, REML = F)
+m2 <- lmerTest::lmer(angle ~ recipe + temp + (1|replicate),data = cake, REML = F)
+m3 <- lmerTest::lmer(angle ~ temp + (1|recipe),data = cake, REML = F)
+m4 <- lmerTest::lmer(angle ~ recipe * temp + (1|replicate), cake, REML= FALSE)
+m5 <- lmerTest::lmer(angle ~ recipe + (1+temp|recipe),data = cake, REML = F)
+m6 <- lmerTest::lmer(angle ~ recipe + (1+replicate|recipe),data = cake, REML = F)
+m7 <- lmerTest::lmer(angle ~ recipe + (1+replicate|temp),data = cake, REML = F)
+m8 <- lmerTest::lmer(angle ~ recipe + temp + (1|recipe),data = cake, REML = F)
+m9 <- lmerTest::lmer(angle ~ temp + replicate + (1|recipe),data = cake, REML = F)
+m10 <- lmerTest::lmer(angle ~ temp + (1+temp|recipe),data = cake, REML = F)
+m11 <- lmerTest::lmer(angle ~ recipe + temp + (1+temp|recipe),data = cake, REML = F)
+m12 <- lmerTest::lmer(angle ~ recipe + (1|temp),data = cake, REML = F)
+m13 <- lmerTest::lmer(angle ~ temp + recipe + (1+temp|recipe),data = cake, REML = F)
+m14 <- lmerTest::lmer(angle ~ recipe + temp + (1+recipe|replicate),data = cake, REML = F)
+m15 <- lmerTest::lmer(angle ~ recipe + (1+replicate|temp),data = cake, REML = F)
+m16 <- lmerTest::lmer(angle ~ recipe + temp+ (1+replicate|temp),data = cake, REML = F)
+#m17 makes hella sense RN. So on the y axis is angle and on the x axis is temperature. Because for each replicate of the recipe is a corresponding temperature we can give replicate indedependent intercept and recipes independent slopes.
+m_1 <- lmerTest::lmer(angle ~ temp +  (1+recipe|replicate),data = cake, REML = F)
+m_2 <- lmerTest::lmer(angle ~ temp +  (1+replicate|recipe),data = cake, REML = F)
+#It makes sence to add recipe as a fixed variable because we expect different outcomes from different cake recipies 
+m_3 <- lmerTest::lmer(angle ~ temp + recipe+ (1+recipe|replicate),data = cake, REML = F)
+#m20 recipe can  be fixed because we expect different outcomes from each recipe 
+m20 <- lmerTest::lmer(angle ~ temp +  recipe + (1+replicate|recipe),data = cake, REML = F)
+m21 <- lmerTest::lmer(angle ~ temp + (1+recipe|recipe),data = cake, REML = F)
+m22 <- lmerTest::lmer(angle ~ temp +  recipe + (1|replicate),data = cake, REML = F)
+
+anova(m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21, m22)
+
+
+summary(intercept_model)
+summary(intercept_model2)
+summary(m3)
+summary(m4)
+summary(m5)
+
+```
+The best models
+```{r}
+m17 <- lmerTest::lmer(angle ~ temp +  (1+recipe|replicate),data = cake, REML = F)
+m18 <- lmerTest::lmer(angle ~ temp +  (1+replicate|recipe),data = cake, REML = F)
+#It makes sence to add recipe as a fixed variable because we expect different outcomes from different cake recipies 
+m19 <- lmerTest::lmer(angle ~ temp + recipe+ (1+recipe|replicate),data = cake, REML = F)
+
+#Creating new models after Fabio
+m01<-lmerTest::lmer((angle~recipe + (1|replicate)),data = cake, REML = F)
+#failed: m02<-lmerTest::lmer((angle~recipe + (1+recipe|replicate)),data = cake, REML = F)
+m03<-lmerTest::lmer((angle~temp + (1|replicate)),data = cake, REML = F)
+#failed: m04<-lmerTest::lmer((angle~temp + (1+temp|replicate)),data = cake, REML = F)
+#boundary: m05<-lmerTest::lmer((angle~recipe + temp+ (1+recipe|replicate)),data = cake, REML = F)
+m06<-lmerTest::lmer((angle~recipe + temp + (1|replicate)),data = cake, REML = F)
+
+#try these
+	- (angle~recipe + (1|replicate))
+	- (angle~recipe+(1+reicpe´|replicate)
+	- (angle~temp + (1|replicate))
+	- (angle~temp+(1+temp´|replicate)
+  - (angle~ temp + recipe+(1+reicpe´|replicate)
+
+anova(m01, m03, m06)
+```
+Loglikelyhood like SSR how much uexplain vairance, the larger the likelyhood the more unexplained variables. 
+
+
+
+Chosing the best model fra AIC is m17, where angle is predicted by temperature, recipe has independent slopes and replicate has independent intercepts
+
+```{r}
+summary(m06)
+#R squared
+MuMIn::r.squaredGLMM(m06)
+```
+
+
+
+```{r}
+ggplot(cake, aes(x=temp, y=angle, color=replicate, shape=recipe)) + geom_point() + geom_smooth(method = lm)
+
+```
+Maybe subsetting is a better visual?
+```{r}
+cakeA<-filter(cake, recipe=="A")
+cakeB<-filter(cake, recipe=="B")
+cakeC<-filter(cake, recipe=="C")
+```
+
+```{r}
+ggplot(cakeA, aes(x=temp, y=angle, color=replicate)) + geom_point() + geom_smooth(method = lm) + ggtitle("Recipe A")
+ggplot(cakeB, aes(x=temp, y=angle, color=replicate)) + geom_point() + geom_smooth(method = lm) + ggtitle("Recipe B")
+ggplot(cakeC, aes(x=temp, y=angle, color=replicate)) + geom_point() + geom_smooth(method = lm) + ggtitle("Recipe C")
+```
+These plots prove that we need independent slopes and independent intercepts to make de best model
+
+```{r}
+library(rgl)
+plot3d(cake$recipe, cake$angle, cake$temp,size=1, type="s", col = cake$recipe)
+```
+
+
+
+```{r}
+coef(m17)
+```
+
+
+
+```{r}
+plot(m06)
+```
+
+```{r}
+qqplot(m17)
+```
+
+
+GGPlot
+```{r}
+ggplot(cake, aes(x=replicate,y=angle, color=recipe)) +
+  geom_point() + geom_smooth(aes(model="lm"))
+```
+
+
+
+Make a max model
+```{r}
+max.mod<-lmerTest::lmer(angle ~ recipe + temp + replicate(1|),data = cake, REML = F)
+```
+

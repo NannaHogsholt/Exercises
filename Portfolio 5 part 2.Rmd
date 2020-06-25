@@ -1,0 +1,168 @@
+---
+title: "Portfolio 5 part 2"
+author: "Nanna Høgsholt"
+date: "30/11/2019"
+output: html_document
+---
+
+```{r}
+library(pacman);p_load(tidyverse, boot, lmerTest, caret, e1071)
+
+Titanic<-read.csv("titanic.csv", header=T)
+Titanic<- data.frame(Titanic)
+
+Titanic$Survived<-as.factor(Titanic$Survived)
+Titanic$Pclass<-as.factor(Titanic$Pclass)
+```
+
+Logistic regession 
+*Making the model
+```{r}
+m_age <- glm(Survived ~ Age, Titanic, family = binomial)
+m_ageG <- glm(Survived ~ Age + Sex, Titanic, family = binomial)
+m_sex <- glm(Survived ~ Sex, Titanic, family = binomial)
+m_class <- glm(Survived ~ Pclass, Titanic, family = binomial)
+
+
+m_max <- glm(Survived ~ Sex + Pclass + Age, Titanic, family=binomial)
+
+```
+
+```{r}
+MuMIn::r.squaredGLMM(m_sex)
+MuMIn::r.squaredGLMM(m_age)
+MuMIn::r.squaredGLMM(m_ageG)
+MuMIn::r.squaredGLMM(m_class)
+
+```
+
+
+
+```{r}
+summary(m_age)
+summary(m_ageG)
+summary(m_sex)
+summary(m_class)
+summary(m_max)
+MuMIn::r.squaredGLMM(m_max)
+```
+
+
+
+Calculating odds from the maximum model
+```{r}
+summary(m_max)
+levels(Titanic$Survived)
+
+#log odds into probability for estimate of intercept (**the probability of surviving given you are female, first class and minimun age?** - level 1 baseline)
+boot::inv.logit(3.63492) #97%
+
+#log odds into probability for estimate of surviving if you are male, first class and minimun age?
+boot::inv.logit(3.63492 + ( -2.58872)) #74%
+
+#log odds into probability for estimate of surviving if you are class2, female and minimum age?
+boot::inv.logit(3.63492 + (-1.19911)) #91%
+#log odds into probability for estimate of surviving if you are class2, male and minimum age?
+boot::inv.logit(3.63492 + (-1.19911)+ ( -2.58872)) #46%
+
+#log odds into probability for estimate of surviving if you are class3, female and female age?
+boot::inv.logit(3.63492 + (-2.45544)) 
+
+```
+
+Calculating odds from simple models
+```{r}
+#FEmale
+boot::inv.logit(1.0566) #74%
+#The probability of surviving given that you are male
+boot::inv.logit(1.0566 +  (-2.5051)) #19%
+
+#The probability of surviving given that you are class 1
+boot::inv.logit(0.5306) #62%
+#The probability of surviving given that you are class 2
+boot::inv.logit(0.5306 + (-0.6394)) #47%
+#The probability of surviving given that you are class 3
+boot::inv.logit(0.5306 + (-1.6596)) #24%
+
+#Female age
+boot::inv.logit(1.113881 +(-0.002060 * 27)) #74%
+#Male age
+boot::inv.logit(1.113881 - 2.500001 + (-0.002060*28)) #19%
+ 
+
+```
+
+
+
+
+_________________________________________
+
+```{r}
+library(RColorBrewer)
+display.brewer.all()
+?scale_fill_brewer
+
+(viridis)
+
+Titanic$Pclass<-as.factor(Titanic$Pclass)
+```
+
+
+Visualizing
+```{r}
+ggplot(Titanic, aes(Survived, Pclass, color = Age, shape = Sex)) + geom_jitter(width = .4, height = .4) + scale_color_viridis(option = "D")
+
+#OR
+
+ggplot(Titanic, aes(Pclass, Survived, color = Age, shape = Sex)) + geom_jitter(width = .4, height = .4) + scale_color_viridis(option = "D") + ggtitle("Distribution of survival on the Titanic")
+
+#OR - however this one is very cluttered 
+ggplot(Titanic, aes(Sex, Survived, color = Age, shape = Pclass)) + geom_jitter(width = .4, height = .4) + scale_color_viridis(option = "D")
+
+```
+
+Or this
+
+```{r}
+ggplot(Titanic, aes(x=Age, y=Survived)) + geom_jitter(aes(shape=Sex, color=Pclass))
+```
+
+*Train and test
+
+```{r}
+#adding x column
+Titanic <- Titanic %>% mutate(X=row_number())
+
+#everyone with it below 30 - train data, above 30 - test data
+TT_train <- subset(Titanic, X < 665) #training data
+TT_test <- subset(Titanic, X > 665) #test data
+
+#fit model to train data
+trained_model <- glm(Survived ~ Sex + Pclass + Age, TT_train, family = binomial)
+
+#predict values in test data
+predicted_probs_test = predict(trained_model, TT_test, type = 'response')
+
+#extract actual shape categories, i.e. 'true answers' from the original dataframe
+actual_categories_test = TT_test$Survived
+
+#make a dataframe to see predicted probabilities of jagged category against the actual category
+pred_df_test <- tibble(predicted_probs_test, actual_categories_test)
+
+
+#make a new column to see more easily what our model predicted: if probability is less than 0.5 - it predicted 'curved', otherwise - it predicted jagged
+pred_df_test$predicted_category = ifelse(pred_df_test$predicted_probs_test < 0.5, "0", "1")
+
+#let's see first 6 rows
+head(pred_df_test)
+
+#make sure predicted category is a factor (at the moment it's a character variable due to the way we specified ifelse outcomes)
+pred_df_test$predicted_category <- as_factor(pred_df_test$predicted_category)
+
+#make the confusion matrix
+confusionMatrix(pred_df_test$predicted_category, pred_df_test$actual_categories_test, positive ="1")
+```
+DVS. 80% accuracy
+sensitivity: 67% of the people predicted to be dead were actually dead
+Specificity: 86% of the people predicted to be alive were actually alive 
+
