@@ -1,6 +1,6 @@
 ---
 title: "portfolio 4 stuff"
-author: "Manon Grandjean"
+author: "Nanna Høgsholt"
 date: "11/22/2019"
 output: html_document
 ---
